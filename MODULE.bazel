@@ -1,0 +1,8 @@
+module(
+    name = "sv_project_visualizer",
+    version = "0.1",
+)
+
+# You should already have:
+bazel_dep(name = "verible", version = "0.0.3933")
+bazel_dep(name = "nlohmann_json", version = "3.12.0")
