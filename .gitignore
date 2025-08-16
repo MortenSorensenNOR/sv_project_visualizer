@@ -12,3 +12,6 @@ MODULE.bazel.lock
 /.ijwb/
 /.aswb/
 /.clwb/
+
+# Linting
+.hdl_checker/
