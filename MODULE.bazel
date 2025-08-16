@@ -3,6 +3,13 @@ module(
     version = "0.1",
 )
 
-# You should already have:
+# Dependencies
 bazel_dep(name = "verible", version = "0.0.3933")
 bazel_dep(name = "nlohmann_json", version = "3.12.0")
+
+bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
+git_override(
+    module_name = "hedron_compile_commands",
+    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
+    commit = "abb61a688167623088f8768cc9264798df6a9d10",
+)
