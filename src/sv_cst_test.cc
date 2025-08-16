@@ -11,5 +11,10 @@ int main(int argc, char** argv) {
 
     // Parse json
     json cst_json = cst::ParseFile(argv[1], rf);
-    std::cout << std::setw(4) << cst_json << "\n\n";
+
+    // Parse CST json file
+    cst::ModuleNode* cst_tree = cst::ParseCST(cst_json);
+    free(cst_tree);
+
+    return 0;
 }

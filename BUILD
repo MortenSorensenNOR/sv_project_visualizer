@@ -1,21 +1,27 @@
 cc_library (
     name = "sv_core",
-)
-
-cc_binary(
-    name = "sv_cst_test",
     srcs = [
-        "src/sv_cst_test.cc",
         "src/cst.cc",
     ],
     hdrs = [
         "src/common.h",
         "src/cst.h",
     ],
-    includes = ["src"],
     deps = [
         "@bazel_tools//tools/cpp/runfiles", # to find runfiles portably
         "@nlohmann_json//:json",
+    ],
+    includes = ["src"],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "sv_cst_test",
+    srcs = [
+        "src/sv_cst_test.cc",
+    ],
+    deps = [
+        ":sv_core"
     ],
     data = ["@verible//verible/verilog/tools/syntax:verible-verilog-syntax"],  # bundle the tool
 )

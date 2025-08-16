@@ -48,4 +48,51 @@ json ParseFile(char* file_path, bazel::tools::cpp::runfiles::Runfiles* rf) {
     return json::parse(verible_cst_json_str);
 }
 
+static void ParseModulesFromCSTNode(ModuleNode* root, const json& node) {
+    if (!node.is_object()) return;
+
+    const std::string t = tag_of(node);
+    if (t == "kModuleDeclaration") {
+        std::cout << "found module declaration\n";
+    }
+
+    if (t == "kInstantiationBase") {
+        std::cout << "found module instantiation\n";
+    }
+
+    if (auto a = get_child_array(node)) {
+        for (const auto& c : *a) {
+            if (!c.is_null()) {
+                // TODO: craete new modulenode node I think right?
+                ParseModulesFromCSTNode(root, c);
+            }
+        }
+    }
+}
+
+static void ParseModulesFromJSON(ModuleNode* root, const json& root_json) {
+    if (!root_json.is_object()) return;
+    auto it = root_json.find("tree");
+    if (it != root_json.end() && it->is_object()) {
+        // TODO: Create new node in the tree and make sure that it actually has children and or data
+        ParseModulesFromCSTNode(root, *it);
+    } else {
+        // TODO: Create module here as well I guess
+        ParseModulesFromJSON(root, root_json);
+    }
+}
+
+[[nodiscard]] ModuleNode* ParseCST(const json& cst_json) {
+    // Check that we have a valid json
+    if (!cst_json.is_object()) return nullptr;
+
+    // Parse 
+    ModuleNode* root = (ModuleNode*)malloc(sizeof(ModuleNode));
+    for (const auto& [filename, obj] : cst_json.items()) {
+        ParseModulesFromJSON(root, obj);
+    }
+
+    return root;
+}
+
 }
