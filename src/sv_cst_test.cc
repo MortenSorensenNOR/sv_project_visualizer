@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
 
     // Parse CST json file
     cst::ModuleNode* cst_tree = cst::ParseCST(cst_json);
-    free(cst_tree);
+    delete cst_tree;
 
     return 0;
 }

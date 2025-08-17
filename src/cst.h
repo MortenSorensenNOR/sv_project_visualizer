@@ -3,6 +3,10 @@
 
 namespace cst {
 
+typedef struct {
+    std::string port_name;
+    std::string signal_name; // TODO: Include ranged stuff perhaps?
+} SVPort;
 
 /**
  * @brief TODO
@@ -10,8 +14,8 @@ namespace cst {
  *     module_name      -    name of the module
  */
 typedef struct {
-    char*  module_name;
-    char** IO_ports;
+    std::string         module_name;
+    std::vector<SVPort> IO_ports;
     // TODO: Add a port type to track ports better
 } SVModule;
 
@@ -25,14 +29,24 @@ typedef struct {
  *     children         -    array of child nodes
  */
 typedef struct ModuleNode {
-    char* instance_name;
-    SVModule* module;
+    std::string instance_name;
+    SVModule*   module;
 
     // TODO: If instantiation, have port mapping of signals to ports
     // TODO: Have some reference to the actual files/modules in the project or symbol table
-
-    size_t      n_children;
+    
+    ModuleNode* parent;
     ModuleNode* children;
+    size_t      n_children;
+
+    ModuleNode() {
+        instance_name = "";
+        module = nullptr;
+
+        parent   = nullptr;
+        children = nullptr;
+        n_children = 0;
+    }
 } ModuleNode;
 
 /**
@@ -45,5 +59,10 @@ json ParseFile(char* file_path, bazel::tools::cpp::runfiles::Runfiles* rf);
  * @brief Takes in a json CST and parses out the module structure of the cst.
  */
 ModuleNode* ParseCST(const json& cst_json);
+
+/**
+ * @brief Pretty print the node structure
+ */
+void PrintModuleNode(const ModuleNode* node, int indent = 0);
 
 } // end namespace cst

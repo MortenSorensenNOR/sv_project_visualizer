@@ -1,8 +1,11 @@
-module SubModule (
+module SubModule #(
+    parameter logic ENABLE = 1
+) (
     input  logic A,
-    output logic B
+    input  logic B,
+    output logic C
 );
-    assign B = ~A;
+    assign C = ~A & B;
 endmodule
 
 module TestModule (
@@ -10,10 +13,13 @@ module TestModule (
     input logic rstn,
 
     input  logic A,
-    output logic B
+    output logic O
 );
-    SubModule module_inst (
+    SubModule #(
+        .ENABLE(0)
+    ) module_inst (
         .A(A),
-        .B(B)
+        .B(rstn),
+        .O(O)
     );
 endmodule

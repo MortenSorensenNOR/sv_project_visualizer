@@ -61,3 +61,12 @@ inline void collect_all(const json& node, std::string_view wanted_tag, std::vect
     }
 }
 
+inline const json* find_first_recursive(const json& node, std::string_view wanted_tag) {
+    const auto* current_layer = find_first(node, wanted_tag);
+    if (current_layer != nullptr) return current_layer;
+    for (const auto& e : *get_child_array(node)) {
+        const auto* child_layer = find_first_recursive(e, wanted_tag);
+        if (child_layer != nullptr) return child_layer;
+    }
+    return nullptr;
+}
