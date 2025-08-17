@@ -22,7 +22,7 @@ cc_binary(
         "src/sv_cst_test.cc",
     ],
     deps = [
-        ":sv_core"
+        ":sv_core",
     ],
     data = ["@verible//verible/verilog/tools/syntax:verible-verilog-syntax"],  # bundle the tool
 )
@@ -31,6 +31,9 @@ cc_binary(
 cc_library(
     name = "user_config",
     hdrs = ["include/config/SkUserConfig.h"],
+    deps = [
+        ":sv_core",
+    ],
     includes = ["include/config"],
     visibility = ["//visibility:public"],
 )
@@ -41,6 +44,8 @@ cc_binary(
     deps = [
         "@skia//:core",
         "@skia//:png_encode_codec",
+        "@skia//:fontmgr_fontconfig",
+        "@skia//:fontmgr_empty_freetype",
     ],
 )
 

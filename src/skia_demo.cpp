@@ -1,50 +1,68 @@
+#include <cstdint>
+#include <iostream>
+
+#include "common.h"
+
 #include "include/core/SkCanvas.h"
+#include "include/core/SkBitmap.h"
 #include "include/core/SkColor.h"
-#include "include/core/SkData.h"
 #include "include/core/SkImage.h"
-#include "include/core/SkImageInfo.h"
-#include "include/core/SkPaint.h"
-#include "include/core/SkRect.h"
-#include "include/core/SkSurface.h"
 #include "include/core/SkStream.h"
+#include "include/core/SkSurface.h"
 #include "include/encode/SkPngEncoder.h"
+#include "include/core/SkFontMgr.h"
+#include "include/core/SkFont.h"
+#include "include/core/SkTypeface.h"
+#include "include/core/SkFontMgr.h"
+#include "include/ports/SkFontMgr_fontconfig.h"
+#include "include/ports/SkFontMgr_empty.h"
+#include "include/ports/SkFontScanner_FreeType.h"
 
-int main() {
-    // Create raster surface (800x600)
-    SkImageInfo info = SkImageInfo::MakeN32Premul(800, 600);
-    auto surface = SkSurfaces::Raster(info);
-    if (!surface) return 1;
+void drawNewString(SkCanvas* canvas) {
+    // Use default FontConfig + scanner
+    auto mgr = SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
 
+    sk_sp<SkTypeface> tf = mgr->matchFamilyStyle(
+        "DejaVu Sans",
+        SkFontStyle(SkFontStyle::kNormal_Weight,
+                    SkFontStyle::kNormal_Width,
+                    SkFontStyle::kUpright_Slant));
+
+    if (!tf) {
+        printf("No typeface found\n");
+        return;
+    }
+
+    SkPaint paint;
+    paint.setColor(SK_ColorWHITE);
+    paint.setAntiAlias(true);
+
+    SkFont font(tf, 32);
+    canvas->drawSimpleText("Hello, Skia!", strlen("Hello, Skia!"),
+                           SkTextEncoding::kUTF8,
+                           50, 100, font, paint);
+}
+
+int main()
+{
+
+    auto surface(SkSurfaces::Raster(SkImageInfo::MakeN32Premul(300, 300)));
     SkCanvas* canvas = surface->getCanvas();
 
-    // Clear background
-    canvas->clear(SK_ColorWHITE);
+    // Clear
+    canvas->clear(SK_ColorBLACK);
 
-    // Draw a rectangle
-    SkPaint paint;
-    paint.setColor(SK_ColorBLUE);
-    paint.setStyle(SkPaint::kStroke_Style);
-    paint.setStrokeWidth(3);
-    SkRect rect = SkRect::MakeXYWH(100, 100, 200, 100);
-    canvas->drawRect(rect, paint);
+    // Draw string
+    drawNewString(canvas);
+    sk_sp<SkImage> img = canvas->getSurface()->makeImageSnapshot();
 
-    // Draw a line
-    paint.setColor(SK_ColorBLACK);
-    paint.setStrokeWidth(2);
-    canvas->drawLine(200, 200, 300, 300, paint);
+    if (!img) { return -1; }
 
-    // Snapshot image
-    sk_sp<SkImage> image(surface->makeImageSnapshot());
+    sk_sp<SkData> png = SkPngEncoder::Encode(nullptr, img.get(), SkPngEncoder::Options());
+    if (!png) { return -1; }
 
-    // Encode as PNG
-    SkPngEncoder::Options options;
-    options.fZLibLevel = 9; // max compression
-    sk_sp<SkData> png = SkPngEncoder::Encode(nullptr, image.get(), options);
-
-    if (png) {
-        SkFILEWStream out("output.png");
-        out.write(png->data(), png->size());
-    }
+    SkFILEWStream out(ResolveUserPath("output.png").c_str());
+    out.write(png->data(), png->size());
 
     return 0;
 }

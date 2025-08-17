@@ -13,6 +13,19 @@ using json = nlohmann::json;
 
 #include "tools/cpp/runfiles/runfiles.h" // from @bazel_tools
 
+// Path
+std::string ResolveUserPath(const char* arg) {
+  namespace fs = std::filesystem;
+  fs::path p(arg);
+  if (p.is_absolute()) return p.string();
+
+  const char* bwd = std::getenv("BUILD_WORKING_DIRECTORY");
+  fs::path base = (bwd && *bwd) ? fs::path(bwd) : fs::current_path();
+  // weakly_canonical tolerates non-existent intermediates better than canonical
+  return fs::weakly_canonical(base / p).string();
+}
+
+// Json stuff
 inline bool is_object(const json& n) { return n.is_object(); }
 inline bool is_array(const json& n)  { return n.is_array(); }
 
