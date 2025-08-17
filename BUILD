@@ -29,6 +29,16 @@ cc_binary(
 )
 
 # 2D graphics
+# TODO: Find a better, more automated way of packaging this in the future
+cc_library(
+    name = "sdl2_system",
+    # let code `#include <SDL.h>` work:
+    copts = ["-I/usr/include/SDL2"],
+    # link the system lib; Bazel passes this through to the linker
+    linkopts = ["-lSDL2"],
+    visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "user_config",
     hdrs = ["include/config/SkUserConfig.h"],
@@ -47,7 +57,8 @@ cc_binary(
         "@skia//:png_encode_codec",
         "@skia//:fontmgr_fontconfig",
         "@skia//:fontmgr_empty_freetype",
-    ],
+        ":sdl2_system",
+    ]
 )
 
 # compile_commands.json generation

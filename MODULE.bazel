@@ -7,7 +7,7 @@ module(
 bazel_dep(name = "verible", version = "0.0.3933")
 bazel_dep(name = "nlohmann_json", version = "3.12.0")
 bazel_dep(name = "libpng", version = "1.6.43")  # or latest
-bazel_dep(name = "freetype", version = "2.13.3")
+bazel_dep(name = "freetype", version = "2.13.3") # this is very flaky, download.savannah.gnu.org is unstable, so might have to retry some times to get it to work
 
 bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
 git_override(

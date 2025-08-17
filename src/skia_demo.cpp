@@ -1,8 +1,11 @@
 #include <cstdint>
 #include <iostream>
+#include <stdexcept>
+#include <chrono>
 
 #include "common.h"
 
+#include <SDL2/SDL.h>
 #include "include/core/SkCanvas.h"
 #include "include/core/SkBitmap.h"
 #include "include/core/SkColor.h"
@@ -18,7 +21,9 @@
 #include "include/ports/SkFontMgr_empty.h"
 #include "include/ports/SkFontScanner_FreeType.h"
 
-void drawNewString(SkCanvas* canvas) {
+static int frame = 0;
+
+SkFont createNewFont() {
     // Use default FontConfig + scanner
     auto mgr = SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
 
@@ -29,40 +34,67 @@ void drawNewString(SkCanvas* canvas) {
                     SkFontStyle::kUpright_Slant));
 
     if (!tf) {
-        printf("No typeface found\n");
-        return;
+        throw std::runtime_error("No typeface found");
     }
 
+    return SkFont(tf, 32);
+}
+
+void drawString(SkCanvas* canvas, SkFont& font) {
     SkPaint paint;
     paint.setColor(SK_ColorWHITE);
     paint.setAntiAlias(true);
 
-    SkFont font(tf, 32);
-    canvas->drawSimpleText("Hello, Skia!", strlen("Hello, Skia!"),
-                           SkTextEncoding::kUTF8,
-                           50, 100, font, paint);
+    frame++;
+    canvas->drawSimpleText("Hello, Skia!", strlen("Hello, Skia!"), SkTextEncoding::kUTF8, 50, 100, font, paint);
 }
 
-int main()
-{
+int main() {
+    const int W = 800, H = 600;
 
-    auto surface(SkSurfaces::Raster(SkImageInfo::MakeN32Premul(300, 300)));
-    SkCanvas* canvas = surface->getCanvas();
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Window* win = SDL_CreateWindow("Skia Live",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, W, H, SDL_WINDOW_SHOWN);
+    SDL_Renderer* ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Texture* tex = SDL_CreateTexture(ren,
+        SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W, H);
 
-    // Clear
-    canvas->clear(SK_ColorBLACK);
+    // BGRA matches SDL_PIXELFORMAT_ARGB8888 bytes on little-endian
+    SkImageInfo info = SkImageInfo::Make(W, H,
+        kBGRA_8888_SkColorType, kPremul_SkAlphaType);
 
-    // Draw string
-    drawNewString(canvas);
-    sk_sp<SkImage> img = canvas->getSurface()->makeImageSnapshot();
+    const size_t rowBytes = info.minRowBytes(); // == W * 4 for BGRA8888
+    std::vector<uint8_t> pixels(rowBytes * H, 0);
 
-    if (!img) { return -1; }
+    // NEW API: wrap your pixels
+    sk_sp<SkSurface> surface = SkSurfaces::WrapPixels(info, pixels.data(), rowBytes);
+    if (!surface) return 1;
 
-    sk_sp<SkData> png = SkPngEncoder::Encode(nullptr, img.get(), SkPngEncoder::Options());
-    if (!png) { return -1; }
+    // Create font
+    SkFont font = createNewFont();
 
-    SkFILEWStream out(ResolveUserPath("output.png").c_str());
-    out.write(png->data(), png->size());
+    bool running = true;
+    SDL_Event e;
+    while (running) {
+        while (SDL_PollEvent(&e)) if (e.type == SDL_QUIT) running = false;
 
+        SkCanvas* canvas = surface->getCanvas();
+        canvas->clear(SK_ColorBLACK);
+        drawString(canvas, font);
+
+        // upload pixels to the window
+        SDL_UpdateTexture(tex, nullptr, pixels.data(), (int)rowBytes);
+        SDL_RenderClear(ren);
+        SDL_RenderCopy(ren, tex, nullptr, nullptr);
+        SDL_RenderPresent(ren);
+
+        // TODO: Query for display refresh rate
+        SDL_Delay(6); // ~165 fps
+    }
+
+    SDL_DestroyTexture(tex);
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+    SDL_Quit();
     return 0;
 }
