@@ -49,15 +49,30 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-cc_binary(
-    name = "skia_demo",
-    srcs = ["src/skia_demo.cpp"],
+cc_library(
+    name = "graphics",
+    hdrs = [
+        "src/graphics.h"
+    ],
+    srcs = [
+        "src/graphics.cc"
+    ],
     deps = [
         "@skia//:core",
         "@skia//:png_encode_codec",
         "@skia//:fontmgr_fontconfig",
         "@skia//:fontmgr_empty_freetype",
         ":sdl2_system",
+    ],
+    includes = ["src"],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "skia_demo",
+    srcs = ["src/skia_demo.cpp"],
+    deps = [
+        ":graphics"
     ]
 )
 

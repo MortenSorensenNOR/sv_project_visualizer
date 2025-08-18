@@ -13,6 +13,78 @@ using json = nlohmann::json;
 
 #include "tools/cpp/runfiles/runfiles.h" // from @bazel_tools
 
+struct vec2 {
+    float x, y;
+
+    vec2(float x = 0.0f, float y = 0.0f) : x(x), y(y) {}
+
+    float operator[](size_t index) const {
+        switch (index) {
+            case 0:
+                return x;
+                break;
+            case 1:
+                return y;
+                break;
+            default:
+                throw std::runtime_error("Invalid index for struct of type vec2");
+                break;
+        } 
+    }
+
+    float& operator[](size_t index) {
+        switch (index) {
+            case 0:
+                return x;
+                break;
+            case 1:
+                return y;
+                break;
+            default:
+                throw std::runtime_error("Invalid index for struct of type vec2");
+                break;
+        } 
+    }
+};
+
+typedef struct {
+    float x, y, z;
+
+    float operator[](size_t index) const {
+        switch (index) {
+            case 0:
+                return x;
+                break;
+            case 1:
+                return y;
+                break;
+            case 2:
+                return z;
+                break;
+            default:
+                throw std::runtime_error("Invalid index for struct of type vec2");
+                break;
+        } 
+    }
+
+    float& operator[](size_t index) {
+        switch (index) {
+            case 0:
+                return x;
+                break;
+            case 1:
+                return y;
+                break;
+            case 2:
+                return z;
+                break;
+            default:
+                throw std::runtime_error("Invalid index for struct of type vec2");
+                break;
+        } 
+    }
+} vec3;
+
 // Path
 std::string ResolveUserPath(const char* arg);
 
