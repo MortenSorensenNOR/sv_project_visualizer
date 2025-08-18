@@ -47,8 +47,12 @@ struct vec2 {
     }
 };
 
-typedef struct {
+extern vec2 vec2_zero;
+
+struct vec3 {
     float x, y, z;
+
+    vec3(float x = 0.0f, float y = 0.0f, float z = 0.0f) : x(x), y(y), z(z) {}
 
     float operator[](size_t index) const {
         switch (index) {
@@ -83,7 +87,9 @@ typedef struct {
                 break;
         } 
     }
-} vec3;
+};
+
+extern vec3 vec3_zero;
 
 // Path
 std::string ResolveUserPath(const char* arg);

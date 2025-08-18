@@ -10,3 +10,6 @@ std::string ResolveUserPath(const char* arg) {
   // weakly_canonical tolerates non-existent intermediates better than canonical
   return fs::weakly_canonical(base / p).string();
 }
+
+vec2 vec2_zero = vec2();
+vec3 vec3_zero = vec3();

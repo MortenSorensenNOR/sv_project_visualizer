@@ -21,6 +21,8 @@
 namespace graphics {
 
 struct WindowStructs {
+    int width, height;
+
     SDL_Window*   window;
     SDL_Renderer* renderer;
     SDL_Texture*  fb_texture;
@@ -30,6 +32,7 @@ struct WindowStructs {
 
     sk_sp<SkSurface> surface;
     SkFont           default_font;
+    SkFont           dbg_font;
 
     ~WindowStructs() {
         SDL_DestroyTexture(fb_texture);
@@ -42,12 +45,7 @@ static std::shared_ptr<WindowStructs> default_window;
 /**
  * @brief Initialize the window system and skia
  */
-void initWindow();
-
-/**
- * @brief Get default canvas
- */
-SkCanvas* getCanvas();
+void initWindow(int width, int height, bool debug_counters = false);
 
 /**
  * @brief Redraw the screen
@@ -63,5 +61,10 @@ SkFont createNewFont(std::string font_name, int font_size);
  * @brief Draw a string onto the canvas
  */
 void drawString(SkCanvas* canvas, const char* text, vec2& pos, SkFont& font, SkColor color);
+
+/**
+ * @brief Draw a box onto the canvas
+ */
+void drawBox(SkCanvas* canvas, vec2& pos, vec2& size, SkColor color);
 
 }
