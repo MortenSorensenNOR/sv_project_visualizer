@@ -254,7 +254,7 @@ void PrintModuleNode(const ModuleNode* node, int indent) {
 
     // Print children
     for (size_t i = 0; i < node->n_children; i++) {
-        PrintModuleNode(&node->children[i], indent + 4);
+        PrintModuleNode(node->children[i], indent + 4);
     }
 }
 

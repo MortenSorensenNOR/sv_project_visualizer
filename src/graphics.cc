@@ -4,6 +4,16 @@ namespace graphics {
 
 static bool DEBUG_COUNTERS = false;
 
+const float scroll_sensitivity = 20.0f;
+
+std::vector<Color> palette = {
+    Color(0xFF595EFFu),
+    Color(0xFFCA3AFFu),
+    Color(0x8AC926FFu),
+    Color(0x1982C4FFu),
+    Color(0x6A4C93FFu)
+};
+
 void initWindow(int width, int height, bool debug_counters) {
     DEBUG_COUNTERS = debug_counters;
 
@@ -37,7 +47,14 @@ void initWindow(int width, int height, bool debug_counters) {
     default_window->dbg_font = createNewFont("DejaVu Sans", 20);
 }
 
-bool updateWindow() {
+inline vec2 screenToWorld(const vec2& p, const Camera& cam) {
+    return vec2(p) / cam.scale - cam.pos;
+}
+inline vec2 getMouse() {
+    int mx, my; SDL_GetMouseState(&mx, &my); return {float(mx), float(my)};
+}
+
+bool updateWindow(NodeGraph* graph) {
     static uint32_t startTime   = SDL_GetTicks();
     static float    fps         = 0.0f;
     static int      frame_count = 0;
@@ -46,20 +63,85 @@ bool updateWindow() {
         frame_count++;
 
     static bool running = true;
+
     SDL_Event e;
+    static bool dragging = false;
+    static vec2 lastMouse(0, 0);
+    const float minScale = 0.05f;
+    const float maxScale = 50.0f;
+    const float zoomStep = 1.1f; // 10% per wheel notch
 
-    while (SDL_PollEvent(&e)) if (e.type == SDL_QUIT) running = false;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) running = false;
 
+        // TODO: Modify the position of the camera based on either shift + mouse click and drag, or 
+        // scrolling/double finger touchpad movement. Zoom camera with ctrl + scolling
+        // Start/stop SHIFT + LMB drag panning
+        if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+            if (SDL_GetModState() & KMOD_SHIFT) {
+                dragging = true;
+                lastMouse = {float(e.button.x), float(e.button.y)};
+            }
+        }
+        if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) {
+            dragging = false;
+        }
+
+        // Drag to pan (scale-aware)
+        if (e.type == SDL_MOUSEMOTION && dragging) {
+            vec2 now{float(e.motion.x), float(e.motion.y)};
+            vec2 d = now - lastMouse;
+            default_window->camera.pos -= vec2(d) / default_window->camera.scale; // minus => screen drag matches world move
+            lastMouse = now;
+        }
+
+        // Wheel / touchpad: pan vs zoom (Ctrl = zoom, otherwise pan)
+        if (e.type == SDL_MOUSEWHEEL) {
+            // SDL on some platforms flips sign; account for that
+            const int flip = (e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED) ? -1 : 1;
+
+            // Prefer precise deltas when available (trackpads), else integer steps
+            const float wx = (e.wheel.preciseX != 0.0f) ? e.wheel.preciseX : (float)e.wheel.x;
+            const float wy = (e.wheel.preciseY != 0.0f) ? e.wheel.preciseY : (float)e.wheel.y;
+
+            const bool ctrl  = (SDL_GetModState() & KMOD_CTRL) != 0;
+            const bool shift = (SDL_GetModState() & KMOD_SHIFT) != 0;
+
+            if (ctrl) {
+                // --- Zoom about the mouse cursor ---
+                vec2 mouse = getMouse();
+                vec2 before = screenToWorld(mouse, default_window->camera);
+
+                // TODO: Fix zooming
+                float factor = std::pow(zoomStep, flip * wy);
+                float newScale = std::clamp(default_window->camera.scale * factor, minScale, maxScale);
+
+                // Adjust position so the point under the cursor stays fixed
+                default_window->camera.pos += before - (default_window->camera.pos + vec2(mouse) / newScale);
+                default_window->camera.scale = newScale;
+            } else {
+                // --- Pan with wheel/trackpad ---
+                // Typical UX: vertical scroll pans up/down, horizontal scroll pans left/right.
+                // Make panning scale-aware (scroll units are in screen space).
+                // flip ensures correct direction on platforms that report inverted deltas.
+                vec2 deltaScreen{wx * flip, -wy * flip}; // minus so natural feel
+                default_window->camera.pos += deltaScreen / default_window->camera.scale * scroll_sensitivity;
+
+                // Optional: if user also holds SHIFT while scrolling, treat vertical as horizontal
+                // (common in many apps). Uncomment if you want that behavior:
+                // if (shift && wy != 0.0f) cam.pos.x += (-wy * flip) / cam.scale;
+            }
+        }
+    }
+
+    // Clear screen
     SkCanvas* canvas = default_window->surface->getCanvas();
     canvas->clear(0xFF1B1C1D);
     
-    vec2 rec_pos(150, 150);
-    vec2 rec_size(400, 200);
-    drawBox(canvas, rec_pos, rec_size, 0xff4285F4);
+    // Draw the graphc
+    drawNodeGraph(canvas, graph, vec2(0, 0));
 
-    vec2 text_pos(250, 250);
-    drawString(canvas, "Hello World!", text_pos, default_window->default_font, SK_ColorWHITE);
-
+    // Draw FPS counter if enabled
     if (DEBUG_COUNTERS) {
         // FPS Counter
         Uint32 currentTime = SDL_GetTicks();
@@ -104,18 +186,32 @@ SkFont createNewFont(std::string font_name, int font_size) {
 
 }
 
-void drawString(SkCanvas* canvas, const char* text, vec2& pos, SkFont& font, SkColor color) {
+void drawString(SkCanvas* canvas, const char* text, vec2& pos, SkFont& font, Color color) {
     SkPaint paint;
-    paint.setColor(color);
+    paint.setColor(color.sk_color());
     paint.setAntiAlias(true);
     canvas->drawSimpleText(text, strlen(text), SkTextEncoding::kUTF8, pos.x, pos.y, font, paint);
 }
 
-void drawBox(SkCanvas* canvas, vec2& pos, vec2& size, SkColor color) {
+void drawBox(SkCanvas* canvas, vec2& pos, vec2& size, Color color) {
     SkPaint paint;
-    paint.setColor(color);
+    paint.setColor(color.sk_color());
     paint.setAntiAlias(true);
-    canvas->drawRoundRect(SkRect::MakeXYWH(pos.x, pos.y, size.x, size.y), 10, 10, paint);
+
+    auto screen_pos = screenToWorld(pos, default_window->camera);
+    auto rect = SkRect::MakeXYWH(screen_pos.x, screen_pos.y, size.x, size.y);
+    canvas->drawRoundRect(rect, 10, 10, paint);
+}
+
+void drawNodeGraph(SkCanvas* canvas, NodeGraph* root, vec2 root_position) {
+    vec2 pos = root_position + root->rel_pos;
+    if (root->rec_size != vec2(0, 0) || root->color.a() == 0) {
+        drawBox(canvas, pos, root->rec_size, root->color);
+    }
+
+    for (size_t i = 0; i < root->children.size(); i++) {
+        drawNodeGraph(canvas, root->children[i], pos);
+    }
 }
 
 }

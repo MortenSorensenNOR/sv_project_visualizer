@@ -35,9 +35,9 @@ typedef struct ModuleNode {
     // TODO: If instantiation, have port mapping of signals to ports
     // TODO: Have some reference to the actual files/modules in the project or symbol table
     
-    ModuleNode* parent;
-    ModuleNode* children;
-    size_t      n_children;
+    ModuleNode*  parent;
+    ModuleNode** children;
+    size_t       n_children;
 
     ModuleNode() {
         instance_name = "";

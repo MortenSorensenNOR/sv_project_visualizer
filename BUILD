@@ -6,6 +6,7 @@ cc_library (
         "src/cst.cc",
     ],
     hdrs = [
+        "src/vec.h",
         "src/common.h",
         "src/cst.h",
     ],
