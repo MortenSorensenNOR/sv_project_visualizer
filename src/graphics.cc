@@ -25,7 +25,7 @@ void initWindow(int width, int height, bool debug_counters) {
     // Initialize SDL and Skia
     SDL_Init(SDL_INIT_VIDEO);
     default_window->window = SDL_CreateWindow("System Verilog Project Viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_SHOWN);
-    default_window->renderer = SDL_CreateRenderer(default_window->window, -1, SDL_RENDERER_ACCELERATED);
+    default_window->renderer = SDL_CreateRenderer(default_window->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC); // Enabled VSync
     default_window->fb_texture = SDL_CreateTexture(default_window->renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
 
     // BGRA matches SDL_PIXELFORMAT_ARGB8888 bytes on little-endian
@@ -40,6 +40,10 @@ void initWindow(int width, int height, bool debug_counters) {
         throw std::runtime_error("Could not create surface");
     }
 
+    // Init camera
+    default_window->camera.pos   = vec2(0.f, 0.f);
+    default_window->camera.scale = 1.f;
+
     // Create default font
     default_window->default_font = createNewFont("DejaVu Sans", 32);
 
@@ -47,9 +51,15 @@ void initWindow(int width, int height, bool debug_counters) {
     default_window->dbg_font = createNewFont("DejaVu Sans", 20);
 }
 
-inline vec2 screenToWorld(const vec2& p, const Camera& cam) {
-    return vec2(p) / cam.scale - cam.pos;
+inline vec2 worldToScreen(const vec2& w, const Camera& cam) {
+    // screen = (world - cam.pos) * cam.scale
+    return (w - cam.pos) * cam.scale;
 }
+inline vec2 screenToWorld(const vec2& s, const Camera& cam) {
+    // world = s / cam.scale + cam.pos
+    return s / cam.scale + cam.pos;
+}
+
 inline vec2 getMouse() {
     int mx, my; SDL_GetMouseState(&mx, &my); return {float(mx), float(my)};
 }
@@ -76,12 +86,10 @@ bool updateWindow(NodeGraph* graph) {
 
         // TODO: Modify the position of the camera based on either shift + mouse click and drag, or 
         // scrolling/double finger touchpad movement. Zoom camera with ctrl + scolling
-        // Start/stop SHIFT + LMB drag panning
+        // Start/stop LMB drag panningc
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
-            if (SDL_GetModState() & KMOD_SHIFT) {
-                dragging = true;
-                lastMouse = {float(e.button.x), float(e.button.y)};
-            }
+            dragging = true;
+            lastMouse = {float(e.button.x), float(e.button.y)};
         }
         if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) {
             dragging = false;
@@ -107,29 +115,30 @@ bool updateWindow(NodeGraph* graph) {
             const bool ctrl  = (SDL_GetModState() & KMOD_CTRL) != 0;
             const bool shift = (SDL_GetModState() & KMOD_SHIFT) != 0;
 
-            if (ctrl) {
-                // --- Zoom about the mouse cursor ---
-                vec2 mouse = getMouse();
-                vec2 before = screenToWorld(mouse, default_window->camera);
 
-                // TODO: Fix zooming
-                float factor = std::pow(zoomStep, flip * wy);
+            if (ctrl) {
+                // --- Zoom about mouse cursor ---
+                vec2 mouse = getMouse();                                // screen coords
+                vec2 anchorWorld = screenToWorld(mouse, default_window->camera);
+
+                float factor   = std::pow(zoomStep, flip * wy);
                 float newScale = std::clamp(default_window->camera.scale * factor, minScale, maxScale);
 
-                // Adjust position so the point under the cursor stays fixed
-                default_window->camera.pos += before - (default_window->camera.pos + vec2(mouse) / newScale);
+                // Keep the world point under the cursor fixed:
+                // anchorWorld = mouse / newScale + newPos  =>  newPos = anchorWorld - mouse / newScale
                 default_window->camera.scale = newScale;
+                default_window->camera.pos   = anchorWorld - mouse / newScale;
             } else {
                 // --- Pan with wheel/trackpad ---
-                // Typical UX: vertical scroll pans up/down, horizontal scroll pans left/right.
-                // Make panning scale-aware (scroll units are in screen space).
-                // flip ensures correct direction on platforms that report inverted deltas.
-                vec2 deltaScreen{wx * flip, -wy * flip}; // minus so natural feel
-                default_window->camera.pos += deltaScreen / default_window->camera.scale * scroll_sensitivity;
+                const bool shift = (SDL_GetModState() & KMOD_SHIFT) != 0;
 
-                // Optional: if user also holds SHIFT while scrolling, treat vertical as horizontal
-                // (common in many apps). Uncomment if you want that behavior:
-                // if (shift && wy != 0.0f) cam.pos.x += (-wy * flip) / cam.scale;
+                vec2 deltaScreen{wx * flip, -wy * flip}; // natural feel
+                vec2 deltaWorld = (shift
+                        ? vec2(-wy * flip, 0.f)   // Shift+wheel = horizontal pan with vertical wheel
+                        : deltaScreen) / default_window->camera.scale * scroll_sensitivity;
+
+                // Move camera opposite of finger/scroll to make content follow the gesture
+                default_window->camera.pos += deltaWorld;
             }
         }
     }
@@ -198,14 +207,16 @@ void drawBox(SkCanvas* canvas, vec2& pos, vec2& size, Color color) {
     paint.setColor(color.sk_color());
     paint.setAntiAlias(true);
 
-    auto screen_pos = screenToWorld(pos, default_window->camera);
-    auto rect = SkRect::MakeXYWH(screen_pos.x, screen_pos.y, size.x, size.y);
+    vec2 sp = worldToScreen(pos, default_window->camera);
+    vec2 ss = size * default_window->camera.scale;
+
+    auto rect = SkRect::MakeXYWH(sp.x, sp.y, ss.x, ss.y);
     canvas->drawRoundRect(rect, 10, 10, paint);
 }
 
 void drawNodeGraph(SkCanvas* canvas, NodeGraph* root, vec2 root_position) {
     vec2 pos = root_position + root->rel_pos;
-    if (root->rec_size != vec2(0, 0) || root->color.a() == 0) {
+    if (root->rec_size != vec2(0, 0) && root->color.a() != 0) {
         drawBox(canvas, pos, root->rec_size, root->color);
     }
 
