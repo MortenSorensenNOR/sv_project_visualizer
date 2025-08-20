@@ -3,9 +3,16 @@
 
 namespace cst {
 
+enum PortType {
+    PORT_TYPE_NAMED,
+    PORT_TYPE_POSITIONAL,
+};
+
 typedef struct {
     std::string port_name;
     std::string signal_name; // TODO: Include ranged stuff perhaps?
+    int port_idx;
+    PortType type;
 } SVPort;
 
 /**

@@ -115,7 +115,7 @@ static void ParseModuleInstantiationCSTNode(ModuleNode* root, const json& module
 
                 // TODO: Figure out a way to find the port name from the module type we are instantiating
                 int    port_end  = port_json_node->find("end")->get<int>();
-                SVPort port_node = {.port_name = "", .signal_name = port_json_node->find("text")->get<std::string>()};
+                SVPort port_node = {.port_name = "", .signal_name = port_json_node->find("text")->get<std::string>(), .type = PORT_TYPE_POSITIONAL};
                 unordered_ports.emplace_back(port_node, port_end);
             }
 
@@ -141,7 +141,7 @@ static void ParseModuleInstantiationCSTNode(ModuleNode* root, const json& module
                 std::string signal_name = signal_json_node->find("text")->get<std::string>();
 
                 int    port_end  = port_json_node->find("end")->get<int>();
-                SVPort port_node = {.port_name = port_name, .signal_name = signal_name};
+                SVPort port_node = {.port_name = port_name, .signal_name = signal_name, .type = PORT_TYPE_NAMED};
                 unordered_ports.emplace_back(port_node, port_end);
             }
         }
@@ -157,9 +157,10 @@ static void ParseModuleInstantiationCSTNode(ModuleNode* root, const json& module
     
     // Set ports
     node->module->IO_ports.reserve(unordered_ports.size());
-    for (auto& port : unordered_ports) {
+    for (int i = 0; i < unordered_ports.size(); i++) {
         // std::cout << "Port name: " << port.port.port_name << ", Signal name: " << port.port.signal_name << "\n";
-        node->module->IO_ports.push_back(port.port);
+        node->module->IO_ports.push_back(unordered_ports[i].port);
+        node->module->IO_ports.back().port_idx = i;
     }
 
     PrintModuleNode(node);
@@ -234,13 +235,20 @@ void PrintModuleNode(const ModuleNode* node, int indent) {
             // Find the max port_name length
             size_t max_len = 0;
             for (const auto& port : node->module->IO_ports) {
-                max_len = std::max(max_len, port.port_name.size());
+                if (port.type == PORT_TYPE_NAMED) {
+                    max_len = std::max(max_len, port.port_name.size());
+                } else {
+                    max_len = std::max(max_len, std::to_string(port.port_idx).size());
+                }
             }
 
             // Print with alignment
             for (const auto& port : node->module->IO_ports) {
-                std::cout << pad << "    - "
-                          << std::left << std::setw(max_len) << port.port_name;
+                if (port.type == PORT_TYPE_NAMED) {
+                    std::cout << pad << "    - " << std::left << std::setw(max_len) << port.port_name;
+                } else {
+                    std::cout << pad << "    - " << std::left << std::setw(max_len) << port.port_idx;
+                }
 
                 if (!port.signal_name.empty()) {
                     std::cout << " ↔  " << port.signal_name;
