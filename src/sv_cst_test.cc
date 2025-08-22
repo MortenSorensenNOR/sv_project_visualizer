@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
     json cst_json = cst::ParseFile(argv[1], rf);
 
     // Parse CST json file
-    cst::ModuleNode* cst_tree = cst::ParseCST(cst_json);
+    cst::SVModuleNode* cst_tree = cst::ParseCST(cst_json);
     delete cst_tree;
 
     return 0;

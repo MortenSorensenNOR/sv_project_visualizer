@@ -11,6 +11,7 @@ enum PortType {
 typedef struct {
     std::string port_name;
     std::string signal_name; // TODO: Include ranged stuff perhaps?
+                             // TODO: Figure out if this should be here? Only valid for instantiation perhaps?
     int port_idx;
     PortType type;
 } SVPort;
@@ -23,7 +24,8 @@ typedef struct {
 typedef struct {
     std::string         module_name;
     std::vector<SVPort> IO_ports;
-    // TODO: Add a port type to track ports better
+
+    std::string source_file;
 } SVModule;
 
 /**
@@ -35,26 +37,23 @@ typedef struct {
  *     n_children       -    number of children of this node
  *     children         -    array of child nodes
  */
-typedef struct ModuleNode {
+struct SVModuleNode {
     std::string instance_name;
     SVModule*   module;
 
-    // TODO: If instantiation, have port mapping of signals to ports
     // TODO: Have some reference to the actual files/modules in the project or symbol table
     
-    ModuleNode*  parent;
-    ModuleNode** children;
-    size_t       n_children;
+    SVModuleNode* parent;
+    std::vector<SVModuleNode*> children;
 
-    ModuleNode() {
+    SVModuleNode() {
         instance_name = "";
         module = nullptr;
 
         parent   = nullptr;
-        children = nullptr;
-        n_children = 0;
+        children.clear();
     }
-} ModuleNode;
+};
 
 /**
  * @brief Take in a single system verilog file, run it through the verible parser, and 
@@ -65,11 +64,11 @@ json ParseFile(char* file_path, bazel::tools::cpp::runfiles::Runfiles* rf);
 /**
  * @brief Takes in a json CST and parses out the module structure of the cst.
  */
-ModuleNode* ParseCST(const json& cst_json);
+SVModuleNode* ParseCST(const json& cst_json);
 
 /**
  * @brief Pretty print the node structure
  */
-void PrintModuleNode(const ModuleNode* node, int indent = 0);
+void PrintModuleNode(const SVModuleNode* node, int indent = 0);
 
 } // end namespace cst

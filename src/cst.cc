@@ -37,13 +37,13 @@ json ParseFile(char* file_path, bazel::tools::cpp::runfiles::Runfiles* rf) {
     return json::parse(verible_cst_json_str);
 }
 
-static void ParseModuleDeclarationCSTNode(ModuleNode* root, const json& module_decl) {
+static void ParseModuleDeclarationCSTNode(SVModuleNode* root, const json& module_decl) {
     std::cout << "found module declaration\n";
     // std::cout << "Module decl: \n";
     // std::cout << std::setw(4) << module_decl << "\n\n\n";
 }
 
-static void ParseModuleInstantiationCSTNode(ModuleNode* root, const json& module_inst) {
+static void ParseModuleInstantiationCSTNode(SVModuleNode* root, const json& module_inst) {
     if (!module_inst.is_object()) return;
 
     auto children    = get_child_array(module_inst);
@@ -150,7 +150,7 @@ static void ParseModuleInstantiationCSTNode(ModuleNode* root, const json& module
     // Sort ports so that positional ports still work
     std::sort(unordered_ports.begin(), unordered_ports.end(), PortOrder::sort);
 
-    ModuleNode* node = new ModuleNode;
+    SVModuleNode* node = new SVModuleNode;
     node->instance_name = inst_name;
     node->module        = new SVModule;
     node->module->module_name = module_name;
@@ -165,12 +165,12 @@ static void ParseModuleInstantiationCSTNode(ModuleNode* root, const json& module
 
     PrintModuleNode(node);
     
-    // TODO: Insert into ModuleNode* root tree
+    // TODO: Insert into SVModuleNode* root tree
     delete node->module;
     delete node;
 }
 
-static void ParseModulesFromCSTNode(ModuleNode* root, const json& node) {
+static void ParseModulesFromCSTNode(SVModuleNode* root, const json& node) {
     if (!node.is_object()) return;
 
     const std::string t = tag_of(node);
@@ -192,7 +192,7 @@ static void ParseModulesFromCSTNode(ModuleNode* root, const json& node) {
     }
 }
 
-static void ParseModulesFromJSON(ModuleNode* root, const json& root_json) {
+static void ParseModulesFromJSON(SVModuleNode* root, const json& root_json) {
     if (!root_json.is_object()) return;
     auto it = root_json.find("tree");
     if (it != root_json.end() && it->is_object()) {
@@ -204,12 +204,12 @@ static void ParseModulesFromJSON(ModuleNode* root, const json& root_json) {
     }
 }
 
-[[nodiscard]] ModuleNode* ParseCST(const json& cst_json) {
+[[nodiscard]] SVModuleNode* ParseCST(const json& cst_json) {
     // Check that we have a valid json
     if (!cst_json.is_object()) return nullptr;
 
     // Parse 
-    ModuleNode* root = new ModuleNode;
+    SVModuleNode* root = new SVModuleNode;
     for (const auto& [filename, obj] : cst_json.items()) {
         ParseModulesFromJSON(root, obj);
     }
@@ -217,7 +217,7 @@ static void ParseModulesFromJSON(ModuleNode* root, const json& root_json) {
     return root;
 }
 
-void PrintModuleNode(const ModuleNode* node, int indent) {
+void PrintModuleNode(const SVModuleNode* node, int indent) {
     if (!node) return;
 
     std::string pad(indent, ' ');
@@ -261,7 +261,7 @@ void PrintModuleNode(const ModuleNode* node, int indent) {
     }
 
     // Print children
-    for (size_t i = 0; i < node->n_children; i++) {
+    for (size_t i = 0; i < node->children.size(); i++) {
         PrintModuleNode(node->children[i], indent + 4);
     }
 }
