@@ -6,15 +6,15 @@ cc_library (
         "src/cst.cc",
     ],
     hdrs = [
-        "src/vec.h",
-        "src/common.h",
-        "src/cst.h",
+        "lib/vec.h",
+        "lib/common.h",
+        "lib/cst.h",
     ],
     deps = [
         "@bazel_tools//tools/cpp/runfiles", # to find runfiles portably
         "@nlohmann_json//:json",
     ],
-    includes = ["src"],
+    includes = ["lib"],
     visibility = ["//visibility:public"],
 )
 
@@ -53,7 +53,7 @@ cc_library(
 cc_library(
     name = "graphics",
     hdrs = [
-        "src/graphics.h"
+        "lib/graphics.h"
     ],
     srcs = [
         "src/graphics.cc"
@@ -65,7 +65,7 @@ cc_library(
         "@skia//:fontmgr_empty_freetype",
         ":sdl2_system",
     ],
-    includes = ["src"],
+    includes = ["lib"],
     visibility = ["//visibility:public"],
 )
 
