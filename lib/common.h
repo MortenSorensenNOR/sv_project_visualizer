@@ -14,6 +14,25 @@ using json = nlohmann::json;
 #include "vec.h"
 
 #include "tools/cpp/runfiles/runfiles.h" // from @bazel_tools
+                                         
+struct Range {
+    int start;
+    int end;
+
+    Range() {
+        start = 0;
+        end   = 0;
+    }
+
+    Range(int start, int end) {
+        this->start = start;
+        this->end   = end;
+    }
+
+    vec2 get() const {
+        return vec2(start, end);
+    }
+};
 
 // Path
 std::string ResolveUserPath(const char* arg);
