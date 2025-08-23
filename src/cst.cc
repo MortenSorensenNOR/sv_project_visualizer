@@ -3,21 +3,12 @@
 
 namespace cst {
 
-static std::string ReadAll(FILE* f) {
-    std::ostringstream out;
-    char buf[8192];
-    size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) out.write(buf, n);
-    return out.str();
-}
-
 json ParseFile(char* file_path, bazel::tools::cpp::runfiles::Runfiles* rf) {
     // Resolve the path for the file to parse
     const std::string sv_file = ResolveUserPath(file_path);
 
     // Locate the embedded Verible CLI in runfiles
-    const std::string tool = rf->Rlocation(
-            "verible~/verible/verilog/tools/syntax/verible-verilog-syntax");
+    const std::string tool = rf->Rlocation("verible~/verible/verilog/tools/syntax/verible-verilog-syntax");
 
     std::string cmd  = tool + " --export_json --printtree " + sv_file;
     FILE*       pipe = popen(cmd.c_str(), "r");
@@ -72,7 +63,7 @@ static void ParseModuleInstantiationCSTNode(SVModuleNode* root, const json& modu
         // we are after is true. I think it has to be wrt. SV syntax, but not quite certain.
 
         if (tag_of(child) == "kInstantiationType") {
-            const auto* module_json_node = find_first_recursive(child, "SymbolIdentifier");
+            const auto* module_json_node = find_first(child, "SymbolIdentifier");
             if (module_json_node == nullptr) {
                 throw std::runtime_error("Could not find the module type");
                 return;
@@ -85,7 +76,7 @@ static void ParseModuleInstantiationCSTNode(SVModuleNode* root, const json& modu
             // TODO: Find all parameter declarations
         }
         else if (tag_of(child) == "kGateInstanceRegisterVariableList") {
-            const auto* inst_json_node = find_first_recursive(child, "SymbolIdentifier");
+            const auto* inst_json_node = find_first(child, "SymbolIdentifier");
             if (inst_json_node == nullptr) {
                 throw std::runtime_error("Could not find the instantiation name and name and registers");
                 return;
@@ -96,7 +87,7 @@ static void ParseModuleInstantiationCSTNode(SVModuleNode* root, const json& modu
                          inst_name_it->get<std::string>() : "";
 
             // TODO: Find all register/signal invocations
-            const auto* port_list_json_node = find_first_recursive(child, "kPortActualList");
+            const auto* port_list_json_node = find_first(child, "kPortActualList");
             if (port_list_json_node == nullptr) {
                 throw std::runtime_error("Could not find port list");
                 return;
@@ -107,7 +98,7 @@ static void ParseModuleInstantiationCSTNode(SVModuleNode* root, const json& modu
             collect_all(*port_list_json_node, "kActualPositionalPort", positional_port_json_nodes);
 
             for (const auto& port : positional_port_json_nodes) {
-                const auto* port_json_node = find_first_recursive(*port, "SymbolIdentifier");
+                const auto* port_json_node = find_first(*port, "SymbolIdentifier");
                 if (port_json_node == nullptr) {
                     throw std::runtime_error("Could not find node for port delcaration");
                     return;
@@ -125,7 +116,7 @@ static void ParseModuleInstantiationCSTNode(SVModuleNode* root, const json& modu
 
             for (const auto& port : named_port_json_nodes) {
                 // Find the port
-                const auto* port_json_node = find_first_recursive(*port, "SymbolIdentifier");
+                const auto* port_json_node = find_first(*port, "SymbolIdentifier");
                 if (port_json_node == nullptr) {
                     throw std::runtime_error("Could not find node for port delcaration");
                     return;
@@ -133,7 +124,7 @@ static void ParseModuleInstantiationCSTNode(SVModuleNode* root, const json& modu
                 std::string port_name = port_json_node->find("text")->get<std::string>();
 
                 // Find the signal
-                const auto* signal_json_node = find_first_recursive(*nth_child(*port, 2), "SymbolIdentifier");
+                const auto* signal_json_node = find_first(*nth_child(*port, 2), "SymbolIdentifier");
                 if (signal_json_node == nullptr) {
                     throw std::runtime_error("Could not find the signal for the named port");
                     return;

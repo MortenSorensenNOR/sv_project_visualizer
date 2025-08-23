@@ -70,6 +70,8 @@ struct Module {
 
     // TODO: How do I connect it to the JSON parsing?
     // After constructing symbol table, still need to parse module instantiations
+    // This is very temporary, jank solution
+    const json* module_cst;
 };
 
 }

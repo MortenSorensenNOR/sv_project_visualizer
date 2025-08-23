@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "sv.h"
 
 namespace cst {
 
@@ -59,12 +60,14 @@ struct SVModuleNode {
  * @brief Take in a single system verilog file, run it through the verible parser, and 
  * return the json CST output.
  */
-json ParseFile(char* file_path, bazel::tools::cpp::runfiles::Runfiles* rf);
+json ParseFiles(size_t num_files, char** file_paths, bazel::tools::cpp::runfiles::Runfiles* rf);
 
 /**
  * @brief Takes in a json CST and parses out the module structure of the cst.
  */
-SVModuleNode* ParseCST(const json& cst_json);
+// SVModuleNode* ParseCST(const json& cst_json);
+SV::Module* ParseCST(const json& cst_json);
+
 
 /**
  * @brief Pretty print the node structure

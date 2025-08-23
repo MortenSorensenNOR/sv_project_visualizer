@@ -3,11 +3,14 @@ cc_library (
     name = "sv_core",
     srcs = [
         "src/common.cc",
-        "src/cst.cc",
+        "src/cst_new.cc",
+        "src/symbol_table.cc",
     ],
     hdrs = [
         "lib/vec.h",
         "lib/common.h",
+        "lib/sv.h",
+        "lib/symbol_table.h",
         "lib/cst.h",
     ],
     deps = [

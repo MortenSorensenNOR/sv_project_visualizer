@@ -37,6 +37,9 @@ struct Range {
 // Path
 std::string ResolveUserPath(const char* arg);
 
+// File stuff
+std::string ReadAll(FILE* f);
+
 // Json stuff
 inline bool is_object(const json& n) { return n.is_object(); }
 inline bool is_array(const json& n)  { return n.is_array(); }
@@ -84,14 +87,4 @@ inline void collect_all(const json& node, std::string_view wanted_tag, std::vect
     if (auto a = get_child_array(node)) {
         for (const auto& c : *a) if (!c.is_null()) collect_all(c, wanted_tag, out);
     }
-}
-
-inline const json* find_first_recursive(const json& node, std::string_view wanted_tag) {
-    const auto* current_layer = find_first(node, wanted_tag);
-    if (current_layer != nullptr) return current_layer;
-    for (const auto& e : *get_child_array(node)) {
-        const auto* child_layer = find_first_recursive(e, wanted_tag);
-        if (child_layer != nullptr) return child_layer;
-    }
-    return nullptr;
 }

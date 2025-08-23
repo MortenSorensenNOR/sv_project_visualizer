@@ -11,5 +11,10 @@ std::string ResolveUserPath(const char* arg) {
   return fs::weakly_canonical(base / p).string();
 }
 
-vec2 vec2_zero = vec2();
-vec3 vec3_zero = vec3();
+std::string ReadAll(FILE* f) {
+    std::ostringstream out;
+    char buf[8192];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) out.write(buf, n);
+    return out.str();
+}
