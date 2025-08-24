@@ -83,7 +83,7 @@ inline vec2 getMouse() {
     int mx, my; SDL_GetMouseState(&mx, &my); return {float(mx), float(my)};
 }
 
-bool updateWindow(sv::ColorizedDoc& g_doc) {
+bool updateWindow(NodeGraph* graph, sv::ColorizedDoc& g_doc) {
     static uint32_t startTime   = SDL_GetTicks();
     static float    fps         = 0.0f;
     static int      frame_count = 0;
@@ -134,31 +134,44 @@ bool updateWindow(sv::ColorizedDoc& g_doc) {
             const bool ctrl  = (SDL_GetModState() & KMOD_CTRL) != 0;
             const bool shift = (SDL_GetModState() & KMOD_SHIFT) != 0;
 
+            // ZOOM WITHOUT CTRL
+            // --- Zoom about mouse cursor ---
+            vec2 mouse = getMouse();                                // screen coords
+            vec2 anchorWorld = screenToWorld(mouse, default_window->camera);
+        
+            float factor   = std::pow(zoomStep, flip * wy);
+            float newScale = std::clamp(default_window->camera.scale * factor, minScale, maxScale);
+        
+            // Keep the world point under the cursor fixed:
+            // anchorWorld = mouse / newScale + newPos  =>  newPos = anchorWorld - mouse / newScale
+            default_window->camera.scale = newScale;
+            default_window->camera.pos   = anchorWorld - mouse / newScale;
 
-            if (ctrl) {
-                // --- Zoom about mouse cursor ---
-                vec2 mouse = getMouse();                                // screen coords
-                vec2 anchorWorld = screenToWorld(mouse, default_window->camera);
-
-                float factor   = std::pow(zoomStep, flip * wy);
-                float newScale = std::clamp(default_window->camera.scale * factor, minScale, maxScale);
-
-                // Keep the world point under the cursor fixed:
-                // anchorWorld = mouse / newScale + newPos  =>  newPos = anchorWorld - mouse / newScale
-                default_window->camera.scale = newScale;
-                default_window->camera.pos   = anchorWorld - mouse / newScale;
-            } else {
-                // --- Pan with wheel/trackpad ---
-                const bool shift = (SDL_GetModState() & KMOD_SHIFT) != 0;
-
-                vec2 deltaScreen{wx * flip, -wy * flip}; // natural feel
-                vec2 deltaWorld = (shift
-                        ? vec2(-wy * flip, 0.f)   // Shift+wheel = horizontal pan with vertical wheel
-                        : deltaScreen) / default_window->camera.scale * scroll_sensitivity;
-
-                // Move camera opposite of finger/scroll to make content follow the gesture
-                default_window->camera.pos += deltaWorld;
-            }
+            // OLD: ZOOM WITH CTRL
+            // if (ctrl) {
+            //     // --- Zoom about mouse cursor ---
+            //     vec2 mouse = getMouse();                                // screen coords
+            //     vec2 anchorWorld = screenToWorld(mouse, default_window->camera);
+            //
+            //     float factor   = std::pow(zoomStep, flip * wy);
+            //     float newScale = std::clamp(default_window->camera.scale * factor, minScale, maxScale);
+            //
+            //     // Keep the world point under the cursor fixed:
+            //     // anchorWorld = mouse / newScale + newPos  =>  newPos = anchorWorld - mouse / newScale
+            //     default_window->camera.scale = newScale;
+            //     default_window->camera.pos   = anchorWorld - mouse / newScale;
+            // } else {
+            //     // --- Pan with wheel/trackpad ---
+            //     const bool shift = (SDL_GetModState() & KMOD_SHIFT) != 0;
+            //
+            //     vec2 deltaScreen{wx * flip, -wy * flip}; // natural feel
+            //     vec2 deltaWorld = (shift
+            //             ? vec2(-wy * flip, 0.f)   // Shift+wheel = horizontal pan with vertical wheel
+            //             : deltaScreen) / default_window->camera.scale * scroll_sensitivity;
+            //
+            //     // Move camera opposite of finger/scroll to make content follow the gesture
+            //     default_window->camera.pos += deltaWorld;
+            // }
         }
     }
 
@@ -167,7 +180,7 @@ bool updateWindow(sv::ColorizedDoc& g_doc) {
     canvas->clear(0xFF1B1C1D);
     
     // // Draw the graphc
-    // drawNodeGraph(canvas, graph, vec2(0, 0));
+    drawNodeGraph(canvas, graph, vec2(0, 0));
 
     if (g_code_panel.visible) {
         renderCodePanel(canvas, g_code_panel, g_doc, default_window->default_font);

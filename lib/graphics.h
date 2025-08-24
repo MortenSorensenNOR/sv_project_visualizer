@@ -114,7 +114,7 @@ void initWindow(int width, int height, bool debug_counters = false);
 /**
  * @brief Redraw the screen
  */
-bool updateWindow(sv::ColorizedDoc& g_doc);
+bool updateWindow(NodeGraph* graph, sv::ColorizedDoc& g_doc);
 
 /**
  * @brief Create a new font
