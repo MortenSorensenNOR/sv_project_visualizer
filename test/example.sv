@@ -1,5 +1,7 @@
+// This is a comment
 module SubModule #(
-    parameter logic ENABLE = 1
+    parameter logic ENABLE = 1,
+    parameter string TEST = "HELLO WORLD!"
 ) (
     input  logic A,
     input  logic B,

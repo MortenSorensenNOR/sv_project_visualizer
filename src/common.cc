@@ -18,3 +18,10 @@ std::string ReadAll(FILE* f) {
     while ((n = fread(buf, 1, sizeof(buf), f)) > 0) out.write(buf, n);
     return out.str();
 }
+
+std::ostream& operator<<(std::ostream& os, const Color& c) {
+    return os << "\033[38;2;" 
+              << int(c.r8) << ";" 
+              << int(c.g8) << ";" 
+              << int(c.b8) << "m";
+}

@@ -7,12 +7,22 @@ static bool DEBUG_COUNTERS = false;
 const float scroll_sensitivity = 20.0f;
 
 std::vector<Color> palette = {
+    Color(0xFFFFFFFFu),
     Color(0xFF595EFFu),
     Color(0xFFCA3AFFu),
     Color(0x8AC926FFu),
     Color(0x1982C4FFu),
     Color(0x6A4C93FFu)
 };
+
+SkColor color_to_sk(Color color) {
+    return (uint32_t(color.a8) << 24) |
+           (uint32_t(color.r8) << 16) |
+           (uint32_t(color.g8) << 8)  |
+           (uint32_t(color.b8));
+}
+
+static CodePanel g_code_panel;
 
 void initWindow(int width, int height, bool debug_counters) {
     DEBUG_COUNTERS = debug_counters;
@@ -45,10 +55,19 @@ void initWindow(int width, int height, bool debug_counters) {
     default_window->camera.scale = 1.f;
 
     // Create default font
-    default_window->default_font = createNewFont("DejaVu Sans", 32);
+    default_window->default_font = createNewFont("DejaVu Sans", 20);
 
     // Debug font
     default_window->dbg_font = createNewFont("DejaVu Sans", 20);
+
+    // Very temporary
+    const float code_panel_width = 650;
+    g_code_panel = {
+        .pos = {width - code_panel_width - 32, 32},
+        .size = {code_panel_width, height - 64.0f},
+        .scrollY = 0.f,
+        .visible = true,
+    };
 }
 
 inline vec2 worldToScreen(const vec2& w, const Camera& cam) {
@@ -64,7 +83,7 @@ inline vec2 getMouse() {
     int mx, my; SDL_GetMouseState(&mx, &my); return {float(mx), float(my)};
 }
 
-bool updateWindow(NodeGraph* graph) {
+bool updateWindow(sv::ColorizedDoc& g_doc) {
     static uint32_t startTime   = SDL_GetTicks();
     static float    fps         = 0.0f;
     static int      frame_count = 0;
@@ -147,8 +166,13 @@ bool updateWindow(NodeGraph* graph) {
     SkCanvas* canvas = default_window->surface->getCanvas();
     canvas->clear(0xFF1B1C1D);
     
-    // Draw the graphc
-    drawNodeGraph(canvas, graph, vec2(0, 0));
+    // // Draw the graphc
+    // drawNodeGraph(canvas, graph, vec2(0, 0));
+
+    if (g_code_panel.visible) {
+        renderCodePanel(canvas, g_code_panel, g_doc, default_window->default_font);
+    }
+
 
     // Draw FPS counter if enabled
     if (DEBUG_COUNTERS) {
@@ -197,32 +221,102 @@ SkFont createNewFont(std::string font_name, int font_size) {
 
 void drawString(SkCanvas* canvas, const char* text, vec2& pos, SkFont& font, Color color) {
     SkPaint paint;
-    paint.setColor(color.sk_color());
+    paint.setColor(color_to_sk(color));
     paint.setAntiAlias(true);
     canvas->drawSimpleText(text, strlen(text), SkTextEncoding::kUTF8, pos.x, pos.y, font, paint);
 }
 
 void drawBox(SkCanvas* canvas, vec2& pos, vec2& size, Color color) {
     SkPaint paint;
-    paint.setColor(color.sk_color());
+    paint.setColor(color_to_sk(color));
     paint.setAntiAlias(true);
 
-    vec2 sp = worldToScreen(pos, default_window->camera);
-    vec2 ss = size * default_window->camera.scale;
-
-    auto rect = SkRect::MakeXYWH(sp.x, sp.y, ss.x, ss.y);
+    auto rect = SkRect::MakeXYWH(pos.x, pos.y, size.x, size.y);
     canvas->drawRoundRect(rect, 10, 10, paint);
+}
+
+static void drawRoundRectWithShadow(SkCanvas* c, SkRect r, float rx, float ry,
+                                    Color fill, Color frame)
+{
+    SkPaint shadow;
+    shadow.setAntiAlias(true);
+    shadow.setImageFilter(SkImageFilters::DropShadow(
+        0.f, 8.f, 18.f, 18.f, 0xA0000000, nullptr)); // subtle soft shadow
+    // draw shadow by painting the same rect with transparent paint + filter
+    SkPaint dummy; dummy.setAntiAlias(true);
+    dummy.setColor(0x00000000);
+    dummy.setImageFilter(shadow.refImageFilter());
+    c->drawRoundRect(r, rx, ry, dummy);
+
+    SkPaint b; b.setAntiAlias(true); b.setColor(color_to_sk(fill));
+    c->drawRoundRect(r, rx, ry, b);
+
+    SkPaint fr; fr.setStyle(SkPaint::kStroke_Style); fr.setStrokeWidth(1.0f);
+    fr.setAntiAlias(true); fr.setColor(color_to_sk(frame));
+    c->drawRoundRect(r, rx, ry, fr);
+}
+
+static void drawTextSV(SkCanvas* c, std::string_view sv, float x, float y, SkFont& font, Color col){
+    if(sv.empty()) return;
+    SkPaint p; p.setAntiAlias(true); p.setColor(color_to_sk(col));
+    c->drawSimpleText(sv.data(), sv.size(), SkTextEncoding::kUTF8, x, y, font, p);
 }
 
 void drawNodeGraph(SkCanvas* canvas, NodeGraph* root, vec2 root_position) {
     vec2 pos = root_position + root->rel_pos;
     if (root->rec_size != vec2(0, 0) && root->color.a() != 0) {
-        drawBox(canvas, pos, root->rec_size, root->color);
+        vec2 sp = worldToScreen(pos, default_window->camera);
+        vec2 ss = root->rec_size * default_window->camera.scale;
+        drawBox(canvas, sp, ss, root->color);
     }
 
     for (size_t i = 0; i < root->children.size(); i++) {
         drawNodeGraph(canvas, root->children[i], pos);
     }
+}
+
+void renderSourceFile(SkCanvas* canvas, vec2 pos, const char* source_code, size_t scroll_line_number) {
+    drawString(canvas, source_code, pos, default_window->default_font, palette[0]);
+}
+
+void renderCodePanel(SkCanvas* canvas, const CodePanel& panel, const sv::ColorizedDoc& doc, SkFont& code_font) {
+    const float R = 14.f;
+    const float pad = 8.f;
+    const float lineH = code_font.getSize() * 1.35f;
+
+    SkRect panelR   = SkRect::MakeXYWH(panel.pos.x, panel.pos.y, panel.size.x, panel.size.y);
+    SkRect contentR = SkRect::MakeXYWH(panel.pos.x+pad, panel.pos.y+pad, panel.size.x-2*pad, panel.size.y-2*pad);
+
+    // dim BG
+    // { SkPaint dim; dim.setColor(0x00000066); canvas->drawPaint(dim); }
+
+    // your helper you already added earlier
+    // drawRoundRectWithShadow(canvas, panelR, R, R, Color(0x202225FFu), Color(0x2A2E33FFu));
+
+    { SkPaint bg; bg.setColor(color_to_sk(Color(0x2A2E33FFu))); canvas->drawRoundRect(panelR, R, R, bg); }
+    { SkPaint bg; bg.setColor(color_to_sk(Color(0x202225FFu))); canvas->drawRoundRect(contentR, R-4, R-4, bg); }
+    
+    canvas->save();
+    canvas->clipRect(contentR, true);
+
+    float y = contentR.top() + 8.f + lineH - panel.scrollY;
+    const float x0 = contentR.left() + 12.f;
+
+    for (const auto& line : doc) {
+        float bottom = y + lineH * 0.2f;
+        if (bottom >= contentR.top() && y - lineH <= contentR.bottom()) {
+            float x = x0;
+            for (const auto& span : line) {
+                if (span.text.empty()) continue;
+                SkScalar w = code_font.measureText(span.text.data(), span.text.size(), SkTextEncoding::kUTF8);
+                drawTextSV(canvas, span.text, x, y, code_font, span.color);
+                x += w;
+            }
+        }
+        y += lineH;
+    }
+
+    canvas->restore();
 }
 
 }

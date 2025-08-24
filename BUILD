@@ -19,6 +19,7 @@ cc_library (
     ],
     includes = ["lib"],
     visibility = ["//visibility:public"],
+    data = ["@verible//verible/verilog/tools/syntax:verible-verilog-syntax"],  # bundle the tool
 )
 
 cc_binary(
@@ -29,7 +30,6 @@ cc_binary(
     deps = [
         ":sv_core",
     ],
-    data = ["@verible//verible/verilog/tools/syntax:verible-verilog-syntax"],  # bundle the tool
 )
 
 # 2D graphics
@@ -56,9 +56,11 @@ cc_library(
 cc_library(
     name = "graphics",
     hdrs = [
+        "lib/sv_colorizer.h",
         "lib/graphics.h"
     ],
     srcs = [
+        "src/sv_colorizer.cc",
         "src/graphics.cc"
     ],
     deps = [

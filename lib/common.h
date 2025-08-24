@@ -34,6 +34,49 @@ struct Range {
     }
 };
 
+struct Color {
+    uint8_t r8, g8, b8, a8; // canonical storage
+
+    // Constructors
+    Color(uint8_t r=255, uint8_t g=255, uint8_t b=255, uint8_t a=255)
+        : r8(r), g8(g), b8(b), a8(a) {}
+
+    Color(float r, float g, float b, float a=1.0f) {
+        r8 = static_cast<uint8_t>(r * 255.0f);
+        g8 = static_cast<uint8_t>(g * 255.0f);
+        b8 = static_cast<uint8_t>(b * 255.0f);
+        a8 = static_cast<uint8_t>(a * 255.0f);
+    }
+
+    Color(uint32_t packed) {
+        r8 = (packed >> 24) & 0xFF;
+        g8 = (packed >> 16) & 0xFF;
+        b8 = (packed >> 8)  & 0xFF;
+        a8 = (packed)       & 0xFF;
+    }
+
+    // Accessors
+    float r() const { return r8 / 255.0f; }
+    float g() const { return g8 / 255.0f; }
+    float b() const { return b8 / 255.0f; }
+    float a() const { return a8 / 255.0f; }
+
+    uint8_t& r() { return r8; }
+    uint8_t& g() { return g8; }
+    uint8_t& b() { return b8; }
+    uint8_t& a() { return a8; }
+
+    uint32_t rgba() const {
+        return (uint32_t(r8) << 24) |
+               (uint32_t(g8) << 16) |
+               (uint32_t(b8) << 8)  |
+               (uint32_t(a8));
+    }
+};
+
+// Stream operator for Color (ANSI escape code)
+std::ostream& operator<<(std::ostream& os, const Color& c);
+
 // Path
 std::string ResolveUserPath(const char* arg);
 
