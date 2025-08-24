@@ -3,7 +3,7 @@ cc_library (
     name = "sv_core",
     srcs = [
         "src/common.cc",
-        "src/cst_new.cc",
+        "src/cst.cc",
         "src/symbol_table.cc",
     ],
     hdrs = [
