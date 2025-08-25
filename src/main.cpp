@@ -1,7 +1,11 @@
 #include "common.h"
 #include "graphics.h"
+#include "cst.h"
+#include <symbol_table.h>
 
 int main(int argc, char** argv) {
+    if (argc < 2) { std::cerr << "usage: sv_cst_test <file.sv> [file_2.sv ...]\n"; return 2; }
+
     // Initialize the window
     graphics::initWindow(1920, 1080, true); 
 
@@ -11,7 +15,7 @@ int main(int argc, char** argv) {
     if (!rf) { std::cerr << "runfiles error: " << error << "\n"; return 1; }
 
     // Parse and colorize a .sv file
-    sv::ColorizedDoc g_doc = sv::ColorizeFileViaBazelRunfiles("test/example.sv", rf, {});
+    sv::ColorizedDoc g_doc = sv::ColorizeFileViaBazelRunfiles(argv[1], rf, {});
     std::cout << "g_doc size: " << g_doc.size() << "\n";;
 
     for (auto& line : g_doc) {
@@ -20,28 +24,16 @@ int main(int argc, char** argv) {
         }
         std::cout << "\n";
     }
-
-    // Create an arbitrary node graph
-    graphics::NodeGraph* root = new graphics::NodeGraph;
-    root->children.resize(4);
-    root->rel_pos   = vec2(400, 400);
-    root->color     = graphics::palette[graphics::ColorPalette::PURPLE];
-    root->color.a() = 0;
     
-    for (int i = 0; i < 4; i++) {
-        graphics::NodeGraph* node = new graphics::NodeGraph;
-        node->rel_pos  = vec2(int(i / 2) * 250 + 20, (i % 2) * 250 + 20);
-        node->rec_size = vec2(200, 200);
-        node->color    = graphics::palette[i+1];
-        node->parent   = root;
-        root->children[i] = node;
-    }
-    root->rec_size = root->GetAABB().br + vec2(20, 20);
+    // Parse json
+    size_t num_files = argc - 1;
+    json cst_json = cst::ParseFiles(num_files, &argv[1], rf); // Assumes that all parameters passed are files to parse
+
+    // Parse CST json file
+    SV::Module* root = cst::ParseCST(cst_json);
     
     // Main loop
     while (graphics::updateWindow(root, g_doc)) {} // TODO: make it so that there is a start and end thing so i can put stuff here perhaps
 
-    // Cleanup
-    delete root;
     return 0;
 }

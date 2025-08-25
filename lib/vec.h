@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <cmath>
+#include <iostream>
 
 // ===== vec2 =====
 struct vec2 {
@@ -51,6 +52,10 @@ struct vec2 {
 
     // Unary minus
     vec2 operator-() const { return vec2(-x, -y); }
+
+    friend std::ostream& operator<<(std::ostream& os, const vec2& v) {
+        return os << "(" << v.x << ", " << v.y << ")";
+    }
 };
 
 // ===== vec3 =====

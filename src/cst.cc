@@ -121,7 +121,16 @@ static void ParseModuleInstantiation(SV::Module* module, const json& module_inst
     // Get module name
     auto instance_type = find_first(module_inst_json, "kInstantiationType");
     if (instance_type == nullptr) return;
-    auto module_name = find_first(*instance_type, "SymbolIdentifier")->find("text")->get<std::string>();
+
+    // Assuming that the structure of this does not change for any other instantiation
+    // ISSUE/TODO: Actually, any regular "logic C = ...;" will be a kInstantiationBase, which fucks up this logic. TODO: FIX THIS
+    auto module_name_node = find_first(*instance_type, "SymbolIdentifier");
+    if (module_name_node == nullptr) return;
+
+    auto module_name_it = module_name_node->find("text");
+    if (module_name_it == module_name_node->end()) return;
+    auto module_name = module_name_it->get<std::string>();
+
     // TODO: Get parameter list wiht "kActualParameterList"
     
     // Get instantiation name
@@ -132,8 +141,10 @@ static void ParseModuleInstantiation(SV::Module* module, const json& module_inst
 
     auto instantiated_module_node = SymTable::symbol_table_lookup(global_module_symbol_table, module_name);
     if (instantiated_module_node == nullptr) return;
-    module->dependencies.push_back(instantiated_module_node);
     instantiated_module_node->references.push_back(module);
+
+    SV::ModuleInstance instance {.module = instantiated_module_node, .instance_name = instantiation_name};
+    module->dependencies.push_back(instance);
 }
 
 static void ParseModuleInstantiationsFromModule(SV::Module* module) {
@@ -280,7 +291,7 @@ static void ParseModuleInstantiationsFromModule(SV::Module* module) {
     if (!cst_json.is_object()) return nullptr;
 
     // Parse all module declarations
-    global_module_symbol_table = new SymTable::ModuleSymbolTable;
+    global_module_symbol_table = new SymTable::ModuleSymbolTable; // Assumes that this exists until symbol_table_destroy is called, though this will have to be called by the main function for now
     for (const auto& [filename, obj] : cst_json.items()) {
         ParseModuleDeclarationsFromJSON(filename, obj);
     }
@@ -299,11 +310,27 @@ static void ParseModuleInstantiationsFromModule(SV::Module* module) {
         }
         std::cout << "Depends on: \n";
         for (auto dependency: module->dependencies) {
-            std::cout << "    - " << dependency->name << "\n";
+            std::cout << "    - " << dependency.module->name << " (" << dependency.instance_name << "0)" << "\n";
         }
     }
 
-    return nullptr;
+    // TODO: Figure out something better, but for now, just return the module with the most dependencies and no references
+    int max_dependency_count = 0;
+    SV::Module* root = nullptr;
+    for (auto& module : global_module_symbol_table->modules) {
+        if (module->references.size() != 0)
+            continue;
+        if (module->dependencies.size() >= max_dependency_count) {
+            max_dependency_count = module->dependencies.size();
+            root = module;
+        }
+    }
+    if (root == nullptr) {
+        throw std::runtime_error("Could not find root in given project files");
+    }
+    std::cout << "Got root as: " << root << "\n";
+
+    return root;
 }
 
 }

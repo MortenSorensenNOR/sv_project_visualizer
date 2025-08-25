@@ -28,3 +28,10 @@ SV::Module* SymTable::symbol_table_lookup(const SymTable::ModuleSymbolTable* tab
     if (idx >= table->modules.size()) return nullptr;
     return table->modules[idx];
 }
+
+void symbol_table_destroy(SymTable::ModuleSymbolTable* table) {
+    for (int i = 0; i < table->modules.size(); i++) {
+        delete table->modules[i];
+    }
+    delete table;
+}

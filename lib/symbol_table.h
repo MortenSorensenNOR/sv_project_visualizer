@@ -38,4 +38,9 @@ SymTable::InsertResult symbol_table_insert(SymTable::ModuleSymbolTable* table, S
  */
 SV::Module* symbol_table_lookup(const SymTable::ModuleSymbolTable* table, const std::string& name);
 
+/**
+ * @brief Destroy the symbol table and the modules inside it
+ */
+void symbol_table_destroy(SymTable::ModuleSymbolTable* table);
+
 }

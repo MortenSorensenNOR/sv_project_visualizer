@@ -23,6 +23,7 @@
 #include "vec.h"
 #include "common.h"
 #include "sv_colorizer.h"
+#include "sv.h"
 
 namespace graphics {
 
@@ -114,7 +115,7 @@ void initWindow(int width, int height, bool debug_counters = false);
 /**
  * @brief Redraw the screen
  */
-bool updateWindow(NodeGraph* graph, sv::ColorizedDoc& g_doc);
+bool updateWindow(SV::Module* root, sv::ColorizedDoc& g_doc);
 
 /**
  * @brief Create a new font
@@ -134,7 +135,7 @@ void drawBox(SkCanvas* canvas, vec2& pos, vec2& size, Color color);
 /**
  * @brief Draw a node graph
  */
-void drawNodeGraph(SkCanvas* canvas, NodeGraph* root, vec2 root_position);
+void drawNodeGraph(SkCanvas* canvas, SV::Module* root, std::string instance_name, vec2& root_position);
 
 /**
  * @brief Render some code

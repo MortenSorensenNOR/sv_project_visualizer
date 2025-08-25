@@ -69,16 +69,18 @@ cc_library(
         "@skia//:fontmgr_fontconfig",
         "@skia//:fontmgr_empty_freetype",
         ":sdl2_system",
+        ":user_config",
     ],
     includes = ["lib"],
     visibility = ["//visibility:public"],
 )
 
 cc_binary(
-    name = "skia_demo",
-    srcs = ["src/skia_demo.cpp"],
+    name = "main",
+    srcs = ["src/main.cpp"],
     deps = [
-        ":graphics"
+        ":graphics",
+        ":sv_core",
     ]
 )
 
@@ -90,7 +92,7 @@ refresh_compile_commands(
     # Only index your C++ targets (add more as you like).
     targets = {
         "//:sv_cst_test": "--cxxopt=-std=gnu++17",
-        "//:skia_demo": "--cxxopt=-std=gnu++17",
+        "//:main": "--cxxopt=-std=gnu++17",
     },
     # Skip headers from external repos (avoids the Abseil header action).
     exclude_headers = "external",

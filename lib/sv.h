@@ -58,6 +58,13 @@ struct Parameter {
     SV::DataType data_type;
 };
 
+struct Module;
+struct ModuleInstance {
+    Module* module;
+    std::string instance_name;
+    // std::vector<InstancePort> port_mapping; // TODO
+};
+
 struct Module {
     std::string name;
     std::string source_file;
@@ -65,8 +72,8 @@ struct Module {
     std::vector<Port>      ports;
     std::vector<Parameter> parameters;
 
-    std::vector<Module*> references;   // Modules that reference this module
-    std::vector<Module*> dependencies; // Modules that this module depends on (instantiations)
+    std::vector<Module*>        references;   // Modules that reference this module
+    std::vector<ModuleInstance> dependencies; // Modules that this module depends on (instantiations)
 
     // TODO: How do I connect it to the JSON parsing?
     // After constructing symbol table, still need to parse module instantiations

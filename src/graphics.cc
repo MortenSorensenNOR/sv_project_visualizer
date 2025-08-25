@@ -83,7 +83,7 @@ inline vec2 getMouse() {
     int mx, my; SDL_GetMouseState(&mx, &my); return {float(mx), float(my)};
 }
 
-bool updateWindow(NodeGraph* graph, sv::ColorizedDoc& g_doc) {
+bool updateWindow(SV::Module* root, sv::ColorizedDoc& g_doc) {
     static uint32_t startTime   = SDL_GetTicks();
     static float    fps         = 0.0f;
     static int      frame_count = 0;
@@ -179,8 +179,9 @@ bool updateWindow(NodeGraph* graph, sv::ColorizedDoc& g_doc) {
     SkCanvas* canvas = default_window->surface->getCanvas();
     canvas->clear(0xFF1B1C1D);
     
-    // // Draw the graphc
-    drawNodeGraph(canvas, graph, vec2(0, 0));
+    // Draw the graphc
+    vec2 root_pos = vec2(200, 200);
+    drawNodeGraph(canvas, root, "", root_pos);
 
     if (g_code_panel.visible) {
         renderCodePanel(canvas, g_code_panel, g_doc, default_window->default_font);
@@ -248,43 +249,27 @@ void drawBox(SkCanvas* canvas, vec2& pos, vec2& size, Color color) {
     canvas->drawRoundRect(rect, 10, 10, paint);
 }
 
-static void drawRoundRectWithShadow(SkCanvas* c, SkRect r, float rx, float ry,
-                                    Color fill, Color frame)
-{
-    SkPaint shadow;
-    shadow.setAntiAlias(true);
-    shadow.setImageFilter(SkImageFilters::DropShadow(
-        0.f, 8.f, 18.f, 18.f, 0xA0000000, nullptr)); // subtle soft shadow
-    // draw shadow by painting the same rect with transparent paint + filter
-    SkPaint dummy; dummy.setAntiAlias(true);
-    dummy.setColor(0x00000000);
-    dummy.setImageFilter(shadow.refImageFilter());
-    c->drawRoundRect(r, rx, ry, dummy);
-
-    SkPaint b; b.setAntiAlias(true); b.setColor(color_to_sk(fill));
-    c->drawRoundRect(r, rx, ry, b);
-
-    SkPaint fr; fr.setStyle(SkPaint::kStroke_Style); fr.setStrokeWidth(1.0f);
-    fr.setAntiAlias(true); fr.setColor(color_to_sk(frame));
-    c->drawRoundRect(r, rx, ry, fr);
-}
-
 static void drawTextSV(SkCanvas* c, std::string_view sv, float x, float y, SkFont& font, Color col){
     if(sv.empty()) return;
     SkPaint p; p.setAntiAlias(true); p.setColor(color_to_sk(col));
     c->drawSimpleText(sv.data(), sv.size(), SkTextEncoding::kUTF8, x, y, font, p);
 }
 
-void drawNodeGraph(SkCanvas* canvas, NodeGraph* root, vec2 root_position) {
-    vec2 pos = root_position + root->rel_pos;
-    if (root->rec_size != vec2(0, 0) && root->color.a() != 0) {
-        vec2 sp = worldToScreen(pos, default_window->camera);
-        vec2 ss = root->rec_size * default_window->camera.scale;
-        drawBox(canvas, sp, ss, root->color);
-    }
+void drawNodeGraph(SkCanvas* canvas, SV::Module* root, std::string instance_name, vec2& root_position) {
+    if (root == nullptr) return;
 
-    for (size_t i = 0; i < root->children.size(); i++) {
-        drawNodeGraph(canvas, root->children[i], pos);
+    // TODO: Draw logic for module structure
+    // For now, just hard program in something
+    const float lineH = default_window->default_font.getSize() * 1.35f;
+
+    std::string text = root->name + " (" + instance_name + ")";
+    drawString(canvas, text.c_str(), root_position, default_window->default_font, SK_ColorWHITE);
+    root_position += vec2(0, lineH);
+
+    for (int i = 0; i < root->dependencies.size(); i++) {
+        vec2 new_root_pos = root_position + vec2(40, 0);
+        drawNodeGraph(canvas, root->dependencies[i].module, root->dependencies[i].instance_name, new_root_pos);
+        root_position.y = new_root_pos.y;
     }
 }
 
@@ -299,12 +284,6 @@ void renderCodePanel(SkCanvas* canvas, const CodePanel& panel, const sv::Coloriz
 
     SkRect panelR   = SkRect::MakeXYWH(panel.pos.x, panel.pos.y, panel.size.x, panel.size.y);
     SkRect contentR = SkRect::MakeXYWH(panel.pos.x+pad, panel.pos.y+pad, panel.size.x-2*pad, panel.size.y-2*pad);
-
-    // dim BG
-    // { SkPaint dim; dim.setColor(0x00000066); canvas->drawPaint(dim); }
-
-    // your helper you already added earlier
-    // drawRoundRectWithShadow(canvas, panelR, R, R, Color(0x202225FFu), Color(0x2A2E33FFu));
 
     { SkPaint bg; bg.setColor(color_to_sk(Color(0x2A2E33FFu))); canvas->drawRoundRect(panelR, R, R, bg); }
     { SkPaint bg; bg.setColor(color_to_sk(Color(0x202225FFu))); canvas->drawRoundRect(contentR, R-4, R-4, bg); }
